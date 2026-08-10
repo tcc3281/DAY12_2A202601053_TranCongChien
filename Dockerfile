@@ -37,14 +37,29 @@
 # Multi stage
 FROM python:3.11-slim AS builder
 
+WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
-COPY app ./app  
+
+# Copy toàn bộ thư mục mã nguồn (bao gồm cả app, utils,...)
+COPY . .
 
 FROM python:3.11-slim AS runtime
 
-RUN useradd --create-home --uid 10001 appuser
+WORKDIR /app
+
+# 1. Copy dependencies từ builder sang
+COPY --from=builder /install /usr/local
+
+# 2. Copy toàn bộ code từ builder sang
+COPY --from=builder /app /app
+
+RUN useradd --create-home --uid 10001 appuser && \
+    chown -R appuser:appuser /app
 USER appuser
+
+# Thêm PYTHONPATH để Python luôn tìm thấy các module ở thư mục gốc /app
+ENV PYTHONPATH=/app
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()" || exit 1

@@ -39,12 +39,14 @@ services:
     ports:
       - "8000:8000"
     environment:
-      AGENT_API_KEY: ${AGENT_API_KEY}      # đọc từ .env, KHÔNG viết thẳng khóa
+      AGENT_API_KEY: ${AGENT_API_KEY}
       REDIS_URL: redis://redis:6379/0
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy # Chờ redis qua được healthcheck rồi mới start agent
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      # Dùng python thay vì curl vì slim image không có curl
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
       interval: 30s
       timeout: 5s
       retries: 3
