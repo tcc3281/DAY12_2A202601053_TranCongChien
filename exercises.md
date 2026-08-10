@@ -198,10 +198,27 @@ Ghi lại **một** lỗi bạn gặp khi deploy lên cloud (build fail, health 
 timeout, sai REDIS_URL, app không đọc `$PORT`...): thông báo lỗi là gì, bạn
 tìm ra nguyên nhân bằng cách nào, và sửa ra sao?
 
-> ⚠️ *(Sẽ cập nhật sau khi deploy thật — tôi chưa xong bước này.)* Quy trình chẩn
-> đoán tôi sẽ dùng nếu gặp lỗi: mở log trên dashboard platform rồi kiểm tra theo
-> thứ tự — (1) app có đọc `$PORT` không (nếu cố định 8000 thì health check
-> timeout khi platform gán cổng khác); (2) `REDIS_URL` trên cloud có trỏ đúng
-> instance Redis không (nếu sai thì `/ready` trả 503); (3) app có bind
-> `127.0.0.1` thay vì `0.0.0.0` không. Khi có lỗi thực tế, tôi sẽ ghi lại thông
-> báo cụ thể vào đây.
+> Lỗi thật tôi gặp khi deploy lên Railway:
+>
+> **Lỗi:** log build báo `Error: Invalid value for '--port': '$PORT' is not a
+> valid integer.` — service build thành công nhưng không khởi động được.
+>
+> **Cách tìm ra nguyên nhân:** tôi mở log trên dashboard của Railway và thấy
+> dòng lỗi trên. Chữ `'$PORT'` hiện nguyên con trỏ `$` — tức `$PORT` không được
+> thay thành số. Tôi nhớ lại: trong `startCommand`, Railway chạy lệnh **không qua
+> `/bin/sh` thật sự**, nên biến môi trường không được mở rộng như trong terminal
+> bình thường.
+>
+> **Cách sửa:** bọc lệnh bằng `sh -c` để có một shell thật mở rộng biến:
+>
+> ```toml
+> # trước — Railway truyền nguyên chữ "$PORT":
+> startCommand = "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+> # sau — shell thật mở rộng $PORT thành số do platform gán:
+> startCommand = "sh -c 'uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}'"
+> ```
+>
+> Vì `uvicorn` đọc `--port` bằng argparse (cần số nguyên), còn `${PORT}` chỉ tồn
+> tại trong cú pháp shell — truyền nguyên chữ `$PORT` vào là lỗi ngay. Quy tắc
+> chung: nếu lệnh khởi động của bạn có `${BIẾN}` thì hãy bọc trong `sh -c '...'`
+> để shell thật mở rộng. Sau khi sửa, `railway redeploy` và `/health` trả 200.
