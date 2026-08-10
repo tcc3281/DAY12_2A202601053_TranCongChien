@@ -11,20 +11,16 @@ class Lifecycle:
         # Handler đã được đăng ký trước ta (của uvicorn) — xem install()
         self._previous: dict = {}
 
-    def request_shutdown(self, signum=None, frame=None) -> None:
-        """Signal handler: đánh dấu process đang tắt dần."""
-        self.shutting_down = True
+    def install(self):
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            self._previous[sig] = signal.getsignal(sig)   # nhớ handler cũ
+            signal.signal(sig, self.request_shutdown)     # rồi mới ghi đè
+
+    def request_shutdown(self, signum=None, frame=None):
+        self.shutting_down = True                         # chỉ bật cờ
         previous = self._previous.get(signum)
         if callable(previous):
-            previous(signum, frame)
-
-    def install(self) -> None:
-        """Đăng ký handler cho SIGTERM và SIGINT, nhớ lại handler cũ."""
-        self._previous = {
-            sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)
-        }
-        for sig in (signal.SIGTERM, signal.SIGINT):
-            signal.signal(sig, self.request_shutdown)
+            previous(signum, frame)                       # nhường lại cho uvicorn
 
 
 # Một instance dùng chung cho cả app
