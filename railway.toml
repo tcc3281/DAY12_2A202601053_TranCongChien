@@ -6,13 +6,12 @@
 # Railway tự gán biến PORT — app phải đọc $PORT, đừng cố định 8000.
 
 [build]
-builder = "dockerfile"
+builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Không khai startCommand → Railway dùng CMD trong Dockerfile
-# (vốn là: sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}")
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
-restartPolicyType = "on_failure"
+restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
