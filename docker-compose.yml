@@ -34,10 +34,20 @@ services:
       timeout: 3s
       retries: 5
 
-  # TODO (CP2): khai báo service `agent` ở đây
-  # agent:
-  #   build: .
-  #   ...
+  agent:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      AGENT_API_KEY: ${AGENT_API_KEY}      # đọc từ .env, KHÔNG viết thẳng khóa
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   redis-data:
